@@ -1,0 +1,890 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <link rel="icon" type="image/x-icon" href="/assets/images/favicon.ico">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>KEEP UP | The Burden of Rent</title>
+    <meta name="description"
+        content="How many hours would it take to pay your rent at minimum wage versus median income?">
+
+    <!-- Open Graph / Social Share -->
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="KEEP UP">
+    <meta property="og:description"
+        content="How many hours would it take to pay your rent at minimum wage versus median income?">
+    <meta property="og:image" content="social-cards/keep-up.png">
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="KEEP UP">
+    <meta name="twitter:description"
+        content="How many hours would it take to pay your rent at minimum wage versus median income?">
+    <meta name="twitter:image" content="social-cards/keep-up.png">
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <!-- Using Inter for UI elegance and JetBrains Mono for data numbers -->
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&family=JetBrains+Mono:wght@400&display=swap"
+        rel="stylesheet">
+
+    <!-- D3.js -->
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html,
+        body {
+            width: 100%;
+            height: 100%;
+            min-height: 100vh;
+            overflow: hidden;
+            background-color: #000000;
+            background:
+                radial-gradient(ellipse at 100% 100%, rgba(249, 115, 22, 0.15) 0%, transparent 40%),
+                linear-gradient(135deg, #312e81 0%, #0f172a 30%, #000000 60%, #000000 100%);
+            background-repeat: no-repeat;
+            background-attachment: fixed;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .title {
+            position: fixed;
+            bottom: 40px;
+            right: 80px;
+            z-index: 100;
+            pointer-events: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            align-items: flex-end;
+            text-align: right;
+        }
+
+        .title h1 {
+            font-size: 32px;
+            color: #ff0000;
+            /* Extreme red */
+            letter-spacing: 4px;
+            text-transform: uppercase;
+            font-family: 'Inter', sans-serif;
+            font-weight: 300;
+            margin: 0;
+            transition: color 0.3s ease;
+            text-shadow: 0 0 15px rgba(255, 0, 0, 0.4);
+        }
+
+        body:hover .title h1 {
+            color: #ff3333;
+        }
+
+        #canvas {
+            display: block;
+            cursor: crosshair;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 120vw;
+            height: 120vh;
+            /* Rotation applied dynamically via JS */
+            transform: translate(-50%, -50%) rotate(var(--rotation, 32deg));
+            transform-origin: center center;
+        }
+
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.85);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 200;
+            backdrop-filter: blur(8px);
+        }
+
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        .modal {
+            background: rgba(10, 14, 26, 0.98);
+            border: 1px solid rgba(239, 68, 68, 0.2);
+            border-radius: 12px;
+            padding: 2rem;
+            max-width: 500px;
+            width: 90%;
+            max-height: 85vh;
+            overflow-y: auto;
+            color: #fff;
+            font-family: 'Open Sans', sans-serif;
+        }
+
+        .modal h2 {
+            font-size: 1.25rem;
+            margin-bottom: 1rem;
+            color: #ef4444;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .modal p {
+            margin-bottom: 1rem;
+            line-height: 1.6;
+            font-size: 0.875rem;
+            color: #ccc;
+        }
+
+        .close-btn {
+            margin-top: 1.5rem;
+            padding: 0.625rem 1.5rem;
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            color: #ef4444;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.875rem;
+            font-weight: 600;
+            transition: all 0.2s;
+            width: 100%;
+        }
+
+        .close-btn:hover {
+            background: rgba(239, 68, 68, 0.2);
+        }
+
+        #tooltip {
+            position: fixed;
+            background: rgba(10, 14, 26, 0.98);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            padding: 14px 18px;
+            color: #fff;
+            font-size: 11px;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.1s;
+            z-index: 100;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            min-width: 200px;
+        }
+
+        .t-title {
+            font-weight: 600;
+            color: #ef4444;
+            margin-bottom: 0.5rem;
+            border-bottom: 1px solid #333;
+            padding-bottom: 4px;
+            font-family: 'Inter', sans-serif;
+            /* Matched to page */
+        }
+
+        .t-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 4px;
+            color: #aaa;
+            font-family: 'Inter', sans-serif;
+            /* Matched to page */
+            font-size: 0.7rem;
+        }
+
+        .t-val {
+            color: #fff;
+            font-weight: 600;
+        }
+
+
+
+        /* Reveal Element - Base Pattern */
+        .reveal-element {
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.8s ease, color 0.8s ease;
+            z-index: 50;
+        }
+
+        .reveal-element.visible {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        /* Question - Top Left */
+        .question-text {
+            position: fixed;
+            top: 40px;
+            left: 80px;
+            font-family: 'Inter', sans-serif;
+            font-size: 18px;
+            color: #4a5560;
+            text-align: left;
+            max-width: 350px;
+            transition: opacity 0.8s ease, color 0.8s ease;
+        }
+
+        .question-text.visible {
+            color: #ffffff;
+        }
+
+        .question-text .line-1 {
+            font-weight: 300;
+            margin-bottom: 4px;
+        }
+
+        .question-text .line-2 {
+            font-weight: 600;
+            margin-bottom: 20px;
+        }
+
+        /* Axis Key - Integrated with Question */
+        .axis-key {
+            position: fixed;
+            top: 145px;
+            left: 80px;
+            font-family: 'Inter', sans-serif;
+            font-size: 13px;
+            color: #4a5560;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            transition: opacity 0.8s ease, color 0.8s ease;
+        }
+
+        .axis-key.visible {
+            color: #888;
+        }
+
+        .axis-key .key-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .axis-key .arrow {
+            font-size: 14px;
+            color: #666;
+        }
+
+        /* Footer Links - Bottom Left */
+        .footer-links {
+            position: fixed;
+            bottom: 40px;
+            left: 80px;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 12px;
+        }
+
+        .footer-links a {
+            color: #4a5560;
+            text-decoration: none;
+            font-size: 14px;
+            font-family: 'Inter', sans-serif;
+            transition: color 0.3s ease;
+        }
+
+        .footer-links a:hover {
+            color: #fff;
+        }
+
+
+
+        /* Title Corner Typography */
+        .title-curved {
+            position: fixed;
+            bottom: 40px;
+            right: 60px;
+            width: 200px;
+            /* Increased container size */
+            height: 200px;
+            z-index: 1000;
+            /* Bump z-index to fix occlusion */
+            pointer-events: auto;
+        }
+
+        .title-curved .char {
+            position: absolute;
+            font-family: 'Inter', sans-serif;
+            font-size: 42px;
+            /* Increased font size */
+            font-weight: 400;
+            color: #f97316;
+            letter-spacing: 0;
+            text-transform: uppercase;
+            text-shadow: 0 0 20px rgba(249, 115, 22, 0.8), 0 0 35px rgba(249, 115, 22, 0.4);
+            transform-origin: center center;
+            transition: color 0.3s ease;
+        }
+
+        body:hover .title-curved .char {
+            color: #fb923c;
+        }
+
+        /* K E E - Horizontal Approach (Spaced out by ~35px) */
+        .char.c-k {
+            bottom: 0;
+            right: 140px;
+        }
+
+        .char.c-e1 {
+            bottom: 0;
+            right: 105px;
+        }
+
+        .char.c-e2 {
+            bottom: 0;
+            right: 70px;
+        }
+
+        /* P - The Pivot (45deg) */
+        .char.c-p1 {
+            bottom: 18px;
+            right: 28px;
+            transform: rotate(-45deg);
+        }
+
+        /* U - First Vertical */
+        .char.c-u {
+            bottom: 70px;
+            right: 0;
+            transform: rotate(-90deg);
+            /* Text reads up */
+        }
+
+        /* P - Second Vertical */
+        .char.c-p2 {
+            bottom: 105px;
+            right: 0;
+            transform: rotate(-90deg);
+        }
+
+        /* ! - Exclamation removed */
+
+        /* County Count Label */
+        .county-count {
+            position: fixed;
+            top: 115px;
+            left: 80px;
+            font-family: 'Inter', sans-serif;
+            font-size: 11px;
+            color: #4a5560;
+            transition: opacity 0.8s ease, color 0.8s ease;
+        }
+
+        .county-count.visible {
+            color: #888;
+        }
+
+        /* Mobile Responsiveness - Moved to end for Cascade */
+        @media (max-width: 768px) {
+            .question-text {
+                top: 20px;
+                left: 20px;
+                font-size: 14px;
+                max-width: 200px;
+            }
+
+            .axis-key {
+                top: 100px;
+                /* Consolidating to the latest override */
+                left: 20px;
+                font-size: 11px;
+            }
+
+            .footer-links {
+                top: 20px;
+                right: 20px;
+                bottom: auto;
+                left: auto;
+                text-align: right;
+                display: flex;
+                flex-direction: column;
+                gap: 5px;
+            }
+
+            .footer-links a {
+                font-size: 12px;
+            }
+
+            .title-curved {
+                bottom: 30px;
+                right: 30px;
+                width: 120px;
+                height: 120px;
+                transform: scale(1.6);
+                transform-origin: bottom right;
+            }
+
+            .title-curved .char {
+                font-size: 24px;
+                font-weight: 600;
+            }
+
+            .char.c-k {
+                bottom: 0;
+                right: 84px;
+            }
+
+            .char.c-e1 {
+                bottom: 0;
+                right: 63px;
+            }
+
+            .char.c-e2 {
+                bottom: 0;
+                right: 42px;
+            }
+
+            /* P1 (Pivot) */
+            .char.c-p1 {
+                bottom: 10px;
+                right: 16px;
+                transform: rotate(-45deg);
+            }
+
+            /* U (Vertical) */
+            .char.c-u {
+                bottom: 42px;
+                right: 0;
+                transform: rotate(-90deg);
+            }
+
+            /* P2 (Vertical) */
+            .char.c-p2 {
+                bottom: 63px;
+                right: 0;
+                transform: rotate(-90deg);
+            }
+
+            .county-count {
+                display: none;
+            }
+
+            #canvas {
+                top: 60%;
+                left: 56%;
+                width: 140vw;
+                height: 140vh;
+                transform: translate(-50%, -50%) rotate(var(--rotation, 32deg));
+            }
+
+            #tooltip {
+                font-size: 10px;
+                min-width: 160px;
+                padding: 10px 12px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- Question - Top Left -->
+    <div class="question-text reveal-element" id="question-text">
+        <div class="line-1">How much does it cost</div>
+        <div class="line-2">to keep up with the Joneses?</div>
+    </div>
+
+    <!-- County Count - Above Axis Key -->
+    <div class="county-count reveal-element" id="county-count"></div>
+
+    <!-- Axis Key - Below Question -->
+    <div class="axis-key reveal-element" id="axis-key">
+        <div class="key-item"><span class="arrow">→</span><span>median income</span></div>
+        <div class="key-item"><span class="arrow">↓</span><span>burden of rent</span></div>
+    </div>
+
+    <!-- Footer Links - Bottom Left -->
+    <div class="footer-links reveal-element" id="footer-links">
+        <a href="https://dr.eamer.dev/datavis/poems/" target="_blank">more projects</a>
+        <a href="https://lukesteuber.com" target="_blank">about me</a>
+    </div>
+
+    <div class="title-curved">
+        <span class="char c-k">K</span>
+        <span class="char c-e1">E</span>
+        <span class="char c-e2">E</span>
+        <span class="char c-p1">P</span>
+        <span class="char c-u">U</span>
+        <span class="char c-p2">P</span>
+    </div>
+
+    <canvas id="canvas"></canvas>
+
+
+    <div id="tooltip"></div>
+
+    <div class="modal-overlay" id="modal-overlay">
+        <div class="modal">
+            <h2>The Weight of Rent</h2>
+            <p>A visualization of the housing crisis across 3,222 US counties.</p>
+
+            <p
+                style="font-size: 0.75rem; margin-top: 1.5rem; margin-bottom: 0.5rem; color: #ef4444; font-weight: 600; text-transform: uppercase; letter-spacing: 1px;">
+                Axes</p>
+            <div style="font-size: 0.875rem; line-height: 1.6; color: #aaa;">
+                <strong>Vertical (Y):</strong> Rent Burden (Reversed Scale)<br>
+                <strong>Horizontal (X):</strong> Median Household Income (Log Scale)<br>
+            </div>
+
+            <p
+                style="font-size: 0.75rem; margin-top: 1.5rem; margin-bottom: 0.5rem; color: #ef4444; font-weight: 600; text-transform: uppercase; letter-spacing: 1px;">
+                Interpretation</p>
+            <p>
+                Each dot is a county. <span style="color: #ef4444; font-weight: bold;">Red glow</span> indicates high
+                rent burden relative to income.
+            </p>
+
+            <p style="font-size: 0.75rem; margin-top: 1.5rem; margin-bottom: 0.5rem; color: #888;">Data: Census ACS 2022
+            </p>
+
+            <div style="border-top: 1px solid rgba(255,255,255,0.1); padding-top: 1rem; margin-top: 1.5rem;">
+                <div style="display: flex; gap: 1.5rem; flex-wrap: wrap; font-size: 0.875rem;">
+                    <a href="https://lukesteuber.com" target="_blank" rel="noopener"
+                        style="color: #ef4444; text-decoration: none; display: flex; align-items: center; gap: 0.5rem;">
+                        <span>Created by Luke Steuber</span>
+                        <span style="opacity: 0.7;">↗</span>
+                    </a>
+                    <a href="https://dr.eamer.dev/datavis" target="_blank" rel="noopener"
+                        style="color: #ef4444; text-decoration: none; display: flex; align-items: center; gap: 0.5rem;">
+                        <span>More visualizations</span>
+                        <span style="opacity: 0.7;">↗</span>
+                    </a>
+                </div>
+            </div>
+
+            <button class="close-btn" id="close-modal">Close</button>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const tooltip = document.getElementById('tooltip');
+
+        let width, height;
+        let particles = [];
+        let xScale, yScale, rScale, colorScale;
+        let simulationTime = 0;
+
+        let mouseX = -1000, mouseY = -1000;
+        let hoveredParticle = null;
+        let rotationAngle = 32; // Dynamic, calculated in resize()
+
+        async function init() {
+            function resize() {
+                // Use larger multiplier on mobile to match CSS (140vw vs 120vw)
+                const isMobile = window.innerWidth <= 768;
+                const sizeMultiplier = isMobile ? 1.4 : 1.2;
+
+                width = window.innerWidth * sizeMultiplier;
+                height = window.innerHeight * sizeMultiplier;
+
+                canvas.width = Math.ceil(width * window.devicePixelRatio);
+                canvas.height = Math.ceil(height * window.devicePixelRatio);
+                ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+
+                // Explicitly set style to match calculated dimensions
+                canvas.style.width = `${width}px`;
+                canvas.style.height = `${height}px`;
+
+                // Calculate dynamic rotation angle to point toward bottom-right corner
+                // atan2(height, width) gives the angle of the diagonal
+                // Add offset to account for data distribution not being exactly 45deg
+                const baseAngle = Math.atan2(window.innerHeight, window.innerWidth) * (180 / Math.PI);
+                rotationAngle = baseAngle - 5; // Offset to align with data diagonal
+
+                // Apply rotation via CSS custom property
+                document.documentElement.style.setProperty('--rotation', rotationAngle + 'deg');
+            }
+            window.addEventListener('resize', () => { resize(); updateScales(); });
+            resize();
+
+            const data = await d3.csv('data/housing_crisis_merged.csv', d3.autoType);
+
+            const cleanData = data.filter(d =>
+                d.median_household_income != null &&
+                d.median_household_income > 0 &&
+                d.pct_rent_burdened_30plus != null &&
+                d.total_renters > 0
+            );
+
+            updateScales = () => {
+                // Calculate safe visible area (centered in the larger canvas)
+                // Canvas width is 1.2x (or 1.4x) window width
+                // We want to map data to the window area, not the full canvas overscan
+                const safeW = window.innerWidth;
+                const safeH = window.innerHeight;
+
+                // Offsets to center the safe area on the canvas
+                const offsetX = (width - safeW) / 2;
+                const offsetY = (height - safeH) / 2;
+
+                const isMobile = window.innerWidth <= 768;
+                const padding = isMobile ? 50 : 60; // Larger mobile vis (reduced padding)
+
+                xScale = d3.scaleLog()
+                    .domain(d3.extent(cleanData, d => d.median_household_income))
+                    .range([offsetX + padding, offsetX + safeW - padding]);
+
+                yScale = d3.scaleLinear()
+                    .domain([0, 100])
+                    // Keep the top push (20% of screen height) but stay within safe bounds
+                    .range([offsetY + padding + (safeH * 0.15), offsetY + safeH - padding]);
+
+                rScale = d3.scaleSqrt()
+                    .domain(d3.extent(cleanData, d => d.total_renters))
+                    .range([2.5, 16]);
+            };
+
+            updateScales();
+
+            // Update county count
+            document.getElementById('county-count').textContent = `${cleanData.length.toLocaleString()} US Counties`;
+
+            // Heat Theme (Cool to Hot)
+            // Low: Light Blue (Safe/Cool) -> Mid: Blood Red -> High: Orange (Matching Title)
+            colorScale = d3.scaleLinear()
+                .domain([15, 35, 50, 65])
+                .range(['#93c5fd', '#ef4444', '#b91c1c', '#f97316'])
+                .clamp(true);
+
+            rScale = d3.scaleSqrt()
+                .domain(d3.extent(cleanData, d => d.total_renters))
+                .range([2.5, 16]);
+
+            particles = cleanData.map(d => ({
+                data: d,
+                x: 0, y: 0,
+                r: rScale(d.total_renters),
+                phase: Math.random() * Math.PI * 2,
+                color: d3.color(colorScale(d.pct_rent_burdened_30plus)).rgb()
+            })).sort((a, b) => b.r - a.r); // Sort by radius descending (draw large circles first, small on top)
+
+            requestAnimationFrame(render);
+        }
+
+        function render(time) {
+            simulationTime = time * 0.001;
+
+            // Clear with transparent rect to reveal CSS gradient? No, we need to clear canvas.
+            // But canvas overlays body. If we want body gradient to show, canvas must be transparent.
+            ctx.clearRect(0, 0, width, height);
+
+            let closestDist = 20;
+            let closestP = null;
+
+            particles.forEach(p => {
+                p.baseX = xScale(p.data.median_household_income);
+                p.baseY = yScale(p.data.pct_rent_burdened_30plus);
+
+                const offsetX = Math.sin(simulationTime + p.phase) * 5 + Math.sin(simulationTime * 0.1) * 2; // Forward-biased motion
+                const offsetY = Math.cos(simulationTime * 0.7 + p.phase) * 3 + Math.cos(simulationTime * 0.15) * 1;
+
+                const drawX = p.baseX + offsetX;
+                const drawY = p.baseY + offsetY;
+
+                // Store calculated position for connections
+                p.drawX = drawX;
+                p.drawY = drawY;
+
+                const dx = mouseX - drawX;
+                const dy = mouseY - drawY;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+
+                if (dist < closestDist) {
+                    closestDist = dist;
+                    closestP = p;
+                }
+
+                ctx.beginPath();
+                ctx.arc(drawX, drawY, p.r, 0, Math.PI * 2);
+
+                if (p.data.pct_rent_burdened_30plus > 40) {
+                    ctx.fillStyle = `rgba(${p.color.r}, ${p.color.g}, ${p.color.b}, 0.6)`;
+                    ctx.shadowBlur = 10;
+                    ctx.shadowColor = `rgba(${p.color.r}, ${p.color.g}, ${p.color.b}, 0.8)`;
+                } else {
+                    ctx.fillStyle = `rgba(${p.color.r}, ${p.color.g}, ${p.color.b}, 0.4)`;
+                    ctx.shadowBlur = 0;
+                }
+
+                ctx.fill();
+            });
+
+            if (closestP) {
+                hoveredParticle = closestP;
+
+                const x = closestP.baseX + Math.sin(simulationTime + closestP.phase) * 3;
+                const y = closestP.baseY + Math.cos(simulationTime * 0.7 + closestP.phase) * 3;
+
+                ctx.shadowBlur = 0;
+                ctx.strokeStyle = '#fff';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.arc(x, y, closestP.r + 2, 0, Math.PI * 2);
+                ctx.stroke();
+
+                showTooltip(closestP.data, x, y);
+                showRevealElements(); // Show UI on node hover
+                canvas.style.cursor = 'pointer';
+            } else {
+                if (hoveredParticle) {
+                    hideRevealElements(); // Hide UI when node hover lost
+                }
+                hoveredParticle = null;
+                hideTooltip();
+                canvas.style.cursor = 'crosshair';
+            }
+
+            requestAnimationFrame(render);
+        }
+
+        const titleArea = document.querySelector('.title-curved');
+        const revealElements = document.querySelectorAll('.reveal-element');
+        const footerLinks = document.getElementById('footer-links');
+        let isUILocked = false; // Toggle state
+        let hideTimeout = null;
+
+        // Function to show all reveal elements
+        function showRevealElements() {
+            if (hideTimeout) clearTimeout(hideTimeout);
+            revealElements.forEach(el => el.classList.add('visible'));
+        }
+
+        // Function to hide all reveal elements with delay
+        function hideRevealElements() {
+            if (!isUILocked) {
+                hideTimeout = setTimeout(() => {
+                    revealElements.forEach(el => el.classList.remove('visible'));
+                }, 2000); // 2000ms delay before starting fade
+            }
+        }
+
+        // Hover handlers for all reveal elements and title
+        revealElements.forEach(el => {
+            el.addEventListener('mouseenter', showRevealElements);
+            el.addEventListener('mouseleave', hideRevealElements);
+        });
+        titleArea.addEventListener('mouseenter', showRevealElements);
+        titleArea.addEventListener('mouseleave', hideRevealElements);
+
+        // Track mouse/touch position with rotation correction
+        function updateMousePosition(clientX, clientY) {
+            // Robust pivot calculation using actual element position
+            const rect = canvas.getBoundingClientRect();
+            const cx = rect.left + rect.width / 2;
+            const cy = rect.top + rect.height / 2;
+
+            const rot = rotationAngle * Math.PI / 180;
+            const dx = clientX - cx;
+            const dy = clientY - cy;
+
+            // Un-rotate
+            const rotatedX = dx * Math.cos(-rot) - dy * Math.sin(-rot);
+            const rotatedY = dx * Math.sin(-rot) + dy * Math.cos(-rot);
+
+            // Map from centered offsets back to canvas coordinates
+            mouseX = rotatedX + (width / 2);
+            mouseY = rotatedY + (height / 2);
+
+            // Store raw for tooltip
+            window.rawMouseX = clientX;
+            window.rawMouseY = clientY;
+        }
+
+        window.addEventListener('mousemove', (e) => {
+            updateMousePosition(e.clientX, e.clientY);
+        });
+
+        // Add touch support
+        window.addEventListener('touchstart', (e) => {
+            if (e.touches.length > 0) {
+                updateMousePosition(e.touches[0].clientX, e.touches[0].clientY);
+            }
+        }, { passive: true });
+
+        window.addEventListener('touchmove', (e) => {
+            if (e.touches.length > 0) {
+                // Prevent default to avoid scrolling while interacting with datavis?
+                // Maybe check if touching canvas? 
+                // For now, keep passive: true to allow scroll, but track movement
+                updateMousePosition(e.touches[0].clientX, e.touches[0].clientY);
+            }
+        }, { passive: true });
+
+        // Toggle lock on click anywhere
+        document.body.addEventListener('click', (e) => {
+            if (e.target.closest('.footer-links') || e.target.closest('#tooltip')) return;
+
+            isUILocked = !isUILocked;
+            if (isUILocked) {
+                showRevealElements();
+            } else {
+                hideRevealElements();
+            }
+        });
+
+        function showTooltip(d, x, y) {
+            tooltip.innerHTML = `
+                <div class="t-title">${d.county_name}</div>
+                <div class="t-row"><span>Rent Burden (30%+)</span> <span class="t-val" style="color:${colorScale(d.pct_rent_burdened_30plus)}">${d.pct_rent_burdened_30plus}%</span></div>
+                <div class="t-row"><span>Median Income</span> <span class="t-val">$${d3.format(",")(d.median_household_income)}</span></div>
+                <div class="t-row"><span>Min Wage Hours/Rent</span> <span class="t-val">${d.hours_at_min_wage_for_rent}h</span></div>
+                <div class="t-row"><span>Renters</span> <span class="t-val">${d3.format(",")(d.total_renters)}</span></div>
+            `;
+
+            // Tooltip positioning: Use raw mouse coordinates for robustness
+            // This avoids complex inverse-projection math errors
+            // If rawMouseX is available (from hover/touch), use it. 
+            // Fallback to re-calcs if needed (but raw should exist if hovered)
+            let tx, ty;
+
+            if (window.rawMouseX !== undefined) {
+                tx = window.rawMouseX + 20;
+                ty = window.rawMouseY + 20;
+            } else {
+                // Fallback (Logic kept just in case, but unused if interaction works)
+                const rot = rotationAngle * Math.PI / 180;
+                const rect = canvas.getBoundingClientRect();
+                const cx = rect.left + rect.width / 2;
+                const cy = rect.top + rect.height / 2;
+                const pDx = x - (width / 2);
+                const pDy = y - (height / 2);
+                const screenX = pDx * Math.cos(rot) - pDy * Math.sin(rot) + cx;
+                const screenY = pDx * Math.sin(rot) + pDy * Math.cos(rot) + cy;
+                tx = screenX + 20;
+                ty = screenY + 20;
+            }
+
+            if (tx + 250 > window.innerWidth) tx = (window.rawMouseX || tx) - 270;
+            if (ty + 150 > window.innerHeight) ty = (window.rawMouseY || ty) - 170;
+
+            tooltip.style.left = `${tx}px`;
+            tooltip.style.top = `${ty}px`;
+            tooltip.style.opacity = 1;
+        }
+
+        function hideTooltip() {
+            tooltip.style.opacity = 0;
+        }
+
+        // Modal Logic
+        // Modal logic removed as info-btn is deprecated in favor of the info-panel
+        // const modalOverlay = document.getElementById('modal-overlay');
+        // const closeModal = document.getElementById('close-modal');
+        // if (modalOverlay && closeModal) { ... }
+
+        init();
+
+    </script>
+</body>
+
+</html>
