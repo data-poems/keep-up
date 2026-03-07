@@ -1,39 +1,43 @@
-# Keep Up
+# Keep Up — The Burden of Rent
 
-[![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Live Site](https://img.shields.io/badge/live-dr.eamer.dev-brightgreen)](https://dr.eamer.dev/datavis/poems/keep-up/)
+[![Live Site](https://img.shields.io/badge/live-dr.eamer.dev-blue)](https://dr.eamer.dev/datavis/poems/keep-up/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-3,222 US counties, plotted by how badly rent is eating their residents. One dot per county. The canvas is tilted at the diagonal of your screen so the data runs from top-left (low income, low burden) to bottom-right (high income, high burden) — or the other way around, depending on where you live.
+*How much does it cost to keep up with the Joneses?*
 
-## What it shows
+3,222 US counties, plotted by how badly rent is eating their residents. One dot per county. The canvas tilts at the diagonal so the data runs corner-to-corner — low income and crushing burden in one direction, higher income and manageable rent in the other. Dots with over 40% rent burden glow red.
+
+## What It Shows
 
 The question driving this is simple: how many hours at minimum wage does it take to cover rent?
 
-Each county dot encodes:
-- **X axis**: Median household income (log scale)
-- **Y axis**: Rent burden — the share of renters paying 30%+ of income on housing (reversed scale, so higher burden floats up)
-- **Size**: Total renter population (sqrt scale)
-- **Color**: Blue for manageable burden, red for severe, orange for extreme
+Each dot encodes:
 
-Dots with over 40% burden glow. High-burden counties near low-income areas burn the brightest.
+| Encoding | Variable |
+|----------|---------|
+| X axis | Median household income (log scale) |
+| Y axis | Rent burden — reversed, so high burden floats up |
+| Size | Total renter population (sqrt scale) |
+| Color/glow | Rent burden severity — blue to red, red glows |
 
-The canvas rotates dynamically to match your viewport's diagonal angle, so the data always aligns with the corner-to-corner axis regardless of screen size. Hover a dot to see the county name, rent burden percentage, median income, and estimated hours at minimum wage to cover one month's rent.
+Hover any dot to see the county name, rent burden percentage, median income, and estimated hours at minimum wage to cover one month's rent.
+
+The canvas rotates dynamically to match your viewport's diagonal angle, so the data always aligns with the corner-to-corner axis regardless of screen size.
 
 ## Controls
 
 | Input | Action |
 |-------|--------|
 | Mouse move | Highlight nearest county |
-| Click | Toggle UI visibility lock |
-| Touch | Highlight nearest county (mobile) |
+| Click | Toggle UI element lock |
+| Touch | Highlight nearest county |
 
-## Stack
+## Data
 
-- D3.js v7 for scales and data loading
-- Canvas API for animated particle rendering
-- CSS custom properties for the dynamic rotation angle
-- Inter + JetBrains Mono for axis labels and data readout
-- Census ACS 2022 data via `housing_crisis_merged.csv`
+- **Source**: US Census Bureau, American Community Survey 2022 (ACS 5-Year Estimates)
+- **File**: `data/housing_crisis_merged.csv`
+- **Count**: 3,222 counties — all 50 states plus DC
+- **Fields**: Median household income, percent of renters paying 30%+ on rent, total renter count
 
 ## Files
 
@@ -46,25 +50,19 @@ keep-up/
     └── keep-up.png                 # 1200x630 Open Graph image
 ```
 
-## Data
+## Tech Stack
 
-Source: US Census Bureau, American Community Survey 2022 (ACS 5-Year Estimates)
+D3.js v7 (scales and data loading), Canvas 2D, vanilla JavaScript.
 
-Fields used: median household income, percent of renters paying 30%+ on rent, total renter count, estimated hours at minimum wage required to cover median rent. County-level, all 50 states plus DC.
-
-## Running locally
+## Running Locally
 
 ```bash
 python3 -m http.server 8000
-# open http://localhost:8000
+# Open http://localhost:8000
 ```
 
-## Author
+---
 
-Luke Steuber — [lukesteuber.com](https://lukesteuber.com) — [@lukesteuber.com](https://bsky.app/profile/lukesteuber.com) on Bluesky
+By [Luke Steuber](https://lukesteuber.com) · [@lukesteuber.com](https://bsky.app/profile/lukesteuber.com) · [dr.eamer.dev](https://dr.eamer.dev)
 
 Part of the [data poems collection](https://dr.eamer.dev/datavis/poems/) at dr.eamer.dev.
-
-## License
-
-MIT
