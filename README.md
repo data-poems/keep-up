@@ -5,7 +5,7 @@
 
 *How much does it cost to keep up with the Joneses?*
 
-3,222 US counties, plotted by how badly rent is eating their residents. One dot per county. The canvas tilts at the diagonal so the data runs corner-to-corner — low income and crushing burden in one direction, higher income and manageable rent in the other. Dots with over 40% rent burden glow red.
+3,222 US counties, plotted by how badly rent is eating their residents. One dot per county. The canvas tilts at the diagonal so the data runs corner-to-corner, low income and crushing burden in one direction, higher income and manageable rent in the other. Dots with over 40% rent burden glow red.
 
 ## What It Shows
 
